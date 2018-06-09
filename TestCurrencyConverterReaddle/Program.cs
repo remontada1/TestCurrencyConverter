@@ -6,28 +6,54 @@ using Newtonsoft.Json.Linq;
 using System.Text;
 namespace TestCurrencyConverterReaddle
 {
+
+    enum CurrencyCodes
+    {
+        UAH,
+        EUR,
+        GBP
+    }
+
     class Program
     {
         static void Main(string[] args)
         {
-            GetCurrencyRate(10, "UAH");            
+            Console.WriteLine("Type amount: ");
+            decimal amount = decimal.Parse(Console.ReadLine());
+
+            if (amount < 0)
+            {
+                throw new IndexOutOfRangeException("Amount value must be greater than zero.");
+            }
+
+            Console.WriteLine("Type currency code");
+            string currencyCodeTo = Console.ReadLine();
+
+            var sbForUri = new StringBuilder();
+            string uri = MyExtensions.UriConstruct(sbForUri, currencyCodeTo);
+
+            var sbForCurrencyConvertCode = new StringBuilder();
+            string currencyCodePair = MyExtensions.CurrencyConvertCode(sbForCurrencyConvertCode, currencyCodeTo);
+            
+
+            decimal output = GetCurrencyRate(amount, uri, currencyCodePair);
+
+            Console.WriteLine("{0} : {1}", currencyCodePair, output);
             Console.ReadLine();
         }
 
-        private static void GetCurrencyRate(int amount, string to, string from = "USD")
+        private static decimal GetCurrencyRate(decimal amount, string uri, string currencyCodePair)
         {
+
+            
+
             using (var client = new HttpClient())
             {
                 client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-                var uriBuilder = new StringBuilder();
-
-                uriBuilder.Append("https://free.currencyconverterapi.com/api/v5/convert?q=");
-                uriBuilder.Append(from + "_" + to);
-                uriBuilder.Append("&compact=y");
-                string uri = uriBuilder.ToString();
 
                 var response = client.GetAsync(uri).Result;
                 string res = "";
+
                 using (HttpContent content = response.Content)
                 {
                     Task<string> result = content.ReadAsStringAsync();
@@ -35,13 +61,15 @@ namespace TestCurrencyConverterReaddle
                 }
                 JObject jObject = JObject.Parse(res);
 
-                string currencyCode = from + "_" + to;
 
-                decimal value = (decimal)jObject[currencyCode]["val"];
+                decimal value = (decimal)jObject[currencyCodePair]["val"];
+
                 decimal output = value * amount;
 
-                Console.WriteLine(output);
+                return output;
             }
+
+
         }
     }
 }
